@@ -1,18 +1,27 @@
 {
     "inputs": [
         {
-            "type":"promptString",
+            "type": "promptString",
             "id": "github-token",
             "password": true, // Encrypted at-rest
             "description": "GitHub API Token"
         }
     ],
     "servers": {
-        "github": {
-            "command": "npx",
+        // "github": {
+        //     "command": "npx",
+        //     "args": [
+        //         "-y",
+        //         "@modelcontextprotocol/server-github"
+        //     ],
+        //     "env": {
+        //         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
+        //     }
+        // },
+        "github-local": {
+            "command": "node",
             "args": [
-                "-y",
-                "@modelcontextprotocol/server-github"
+                "D:\\GitHub\\servers\\src\\github\\dist\\index.js"
             ],
             "env": {
                 "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
