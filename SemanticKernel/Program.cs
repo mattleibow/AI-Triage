@@ -1,9 +1,11 @@
-#pragma warning disable SKEXP0010 // Type is for evaluation purposes only and is subject to change or removal in future updates. Suppress this diagnostic to proceed.
+#pragma warning disable SKEXP0110 // Suppress experimental warnings
+#pragma warning disable SKEXP0001 // Suppress experimental warnings
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
-using Octokit;
+using Microsoft.SemanticKernel.Agents;
+using Microsoft.SemanticKernel.ChatCompletion;
+using Octokit.GraphQL;
 using SemanticKernelDemo.Agents;
 using SemanticKernelDemo.Plugins;
 
@@ -14,62 +16,99 @@ var configuration = new ConfigurationBuilder()
     .Build();
 
 // Configure Azure OpenAI
-var endpoint = configuration["AzureOpenAI:Endpoint"] ?? throw new Exception("Azure OpenAI endpoint not found");
-var apiKey = configuration["AzureOpenAI:ApiKey"] ?? throw new Exception("Azure OpenAI API key not found");
-var chatDeployment = configuration["AzureOpenAI:ChatCompletionDeployment"] ?? "gpt-4";
-var embeddingDeployment = configuration["AzureOpenAI:TextEmbeddingDeployment"] ?? "text-embedding-ada-002";
+var endpoint = configuration.GetOrThrow("AzureOpenAI:Endpoint", "Azure OpenAI endpoint");
+var apiKey = configuration.GetOrThrow("AzureOpenAI:ApiKey", "Azure OpenAI API key");
+var deploymentName = configuration.GetOrDefault("AzureOpenAI:ChatCompletionDeployment", "gpt-4");
 
 // Configure GitHub access
-var githubToken = configuration["GitHub:PersonalAccessToken"] ?? throw new Exception("GitHub token not found");
-var repoOwner = configuration["GitHub:RepositoryOwner"] ?? throw new Exception("GitHub repository owner not found");
-var repoName = configuration["GitHub:RepositoryName"] ?? throw new Exception("GitHub repository name not found");
+var githubToken = configuration.GetOrThrow("GitHub:PersonalAccessToken", "GitHub token");
 
-// Initialize GitHub client
-var githubClient = new GitHubClient(new ProductHeaderValue("AI-Triage"));
-githubClient.Credentials = new Credentials(githubToken);
+// Initialize GitHub connection
+var connection = new Connection(new ProductHeaderValue("AI-Triage"), githubToken);
 
-// Set up the kernel with Azure OpenAI
-var builder = Kernel.CreateBuilder()
-    .AddAzureOpenAIChatCompletion(
-        deploymentName: chatDeployment,
-        endpoint: endpoint,
-        apiKey: apiKey);
+// Create the kernel
+var kernel = Kernel.CreateBuilder()
+    .AddAzureOpenAIChatCompletion(deploymentName, endpoint, apiKey)
+    .Build();
 
-var kernel = builder.Build();
+var filters = new FunctionInvocationFilter();
+kernel.AutoFunctionInvocationFilters.Add(filters);
+kernel.FunctionInvocationFilters.Add(filters);
+kernel.PromptRenderFilters.Add(filters);
 
-// Create and register the GitHub plugin
-var githubPlugin = new GitHubPlugin(githubClient, repoOwner, repoName);
-kernel.Plugins.AddFromObject(githubPlugin, "GitHubPlugin");
+// Create and register the GitHub-access kernel
+var githubKernel = kernel.Clone();
+var githubPlugin = new GitHubPlugin(connection);
+githubKernel.Plugins.AddFromObject(githubPlugin, "GitHub");
 
-// Create the Azure OpenAI chat completion service for agents
-var chatService = new AzureOpenAIChatCompletionService(
-    deploymentName: chatDeployment,
-    endpoint: endpoint,
-    apiKey: apiKey);
+Console.WriteLine("Beginning GitHub Issue triage process with AgentGroupChat...");
 
-// Create the GitHub Triage Orchestrator
-var triageOrchestrator = new GitHubTriageOrchestrator(
-    kernel: kernel,
-    chatService: chatService,
-    repoOwner: repoOwner,
-    repoName: repoName,
-    autoApplyLabels: false,  // Set to true to automatically apply labels
-    maxIssues: 5);           // Process up to 5 issues
+// Create the specialized agents
+var issueAgent = IssueAnalyzerAgent.Create(githubKernel);
+var labelAgent = LabelManagerAgent.Create(githubKernel);
+var coordinatorAgent = TriageCoordinatorAgent.Create(kernel);
 
-Console.WriteLine("Beginning GitHub Issue triage process using ApprovalTerminationStrategy...");
+// Set up the agent group chat with ApprovalTerminationStrategy
+var chat = new AgentGroupChat(issueAgent, labelAgent, coordinatorAgent)
+{
+    ExecutionSettings = new()
+    {
+        TerminationStrategy = new GitHubApprovalTerminationStrategy()
+        {
+            Agents = [coordinatorAgent],
+            MaximumIterations = 10
+        }
+    }
+};
 
 try
 {
-    // Run the triage process
-    var triageSummary = await triageOrchestrator.RunTriageAsync();
+    // Process the agent conversation and display messages in real-time
+    Console.WriteLine("\n--- STARTING AGENT CONVERSATION ---\n");
     
-    Console.WriteLine("\n--- TRIAGE PROCESS COMPLETED ---");
+    // Add the user message to start the conversation
+    var initialMessage =
+        $"I need you to triage some issues in a GitHub repository. " +
+        $"Please analyze each issue and recommend appropriate labels.";
+    
+    chat.AddChatMessage(new ChatMessageContent(AuthorRole.User, initialMessage));
+
+    // var userMessage = Console.ReadLine();
+    // if (!string.IsNullOrWhiteSpace(userMessage))
+    // {
+    //     chat.AddChatMessage(new ChatMessageContent(AuthorRole.User, userMessage));
+    // }
+    // else
+    // {
+    //     throw new Exception("User input is required to start the triage process.");
+    // }
+
+        chat.AddChatMessage(new ChatMessageContent(AuthorRole.User, "dotnet/maui #22332"));
+
+
+    await foreach (var message in chat.InvokeAsync())
+    {
+        Console.ForegroundColor = message.AuthorName switch
+        {
+            "IssueAnalyzer" => ConsoleColor.Blue,
+            "LabelManager" => ConsoleColor.Green,
+            "TriageCoordinator" => ConsoleColor.Yellow,
+            _ => ConsoleColor.White
+        };
+
+        Console.WriteLine($"{message.AuthorName}: {message.Content}");
+        Console.ResetColor();
+    }
+
+    Console.WriteLine($"\n--- TRIAGE COMPLETED: {chat.IsComplete} ---");
 }
 catch (Exception ex)
 {
+    Console.ForegroundColor = ConsoleColor.Red;
     Console.WriteLine($"Error during triage process: {ex.Message}");
     Console.WriteLine(ex.StackTrace);
+    Console.ResetColor();
 }
 
-Console.WriteLine("Issue triage process completed. Press any key to exit.");
+Console.WriteLine("\nIssue triage process completed. Press any key to exit.");
 Console.ReadKey();

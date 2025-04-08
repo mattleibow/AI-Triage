@@ -1,53 +1,33 @@
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents;
-using Microsoft.SemanticKernel.Agents.AzureAI;
-using Microsoft.SemanticKernel.Connectors.OpenAI;
 
-namespace SemanticKernelDemo.Agents
+namespace SemanticKernelDemo.Agents;
+
+public static class TriageCoordinatorAgent
 {
-    /// <summary>
-    /// Agent responsible for coordinating the issue triage process
-    /// </summary>
-    public class TriageCoordinatorAgent
+    public static ChatCompletionAgent Create(Kernel kernel)
     {
-        private readonly Kernel _kernel;
-        private readonly AzureOpenAIChatCompletionService _chatService;
-        private readonly string _repoOwner;
-        private readonly string _repoName;
-
-        public TriageCoordinatorAgent(Kernel kernel, AzureOpenAIChatCompletionService chatService, string repoOwner, string repoName)
+        string instructions = $"""
+            You are the coordinator for triaging open source GitHub repositories.
+            
+            Your responsibilities:
+            1. Guide the triage process efficiently
+            2. Request analysis and summarization of the issues from the IssueAnalyzer
+            3. Ensure that the analysis is correct and matches the issue contents
+            4. Request label recommendations from the LabelManager
+            5. Ensure that the labels are appropriate and relevant to the issues
+            6. Make final decisions on which labels to apply to each issue
+            7. Provide a clear final summary of all issues analyzed
+            
+            You have final approval authority. When you are satisfied with the triage recommendations, 
+            conclude by stating "I approve these triage recommendations" to signal completion.
+            """;
+        
+        return new ChatCompletionAgent
         {
-            _kernel = kernel;
-            _chatService = chatService;
-            _repoOwner = repoOwner;
-            _repoName = repoName;
-        }
-
-        /// <summary>
-        /// Creates a Coordinator Agent instance to manage the triage workflow
-        /// </summary>
-        public async Task<IAgent> CreateAgentAsync()
-        {
-            var systemPrompt = $@"
-You are the coordinator for triaging GitHub issues in the {_repoOwner}/{_repoName} repository.
-
-Your responsibilities:
-1. Guide the triage process efficiently
-2. Delegate tasks to specialized agents
-3. Synthesize information from other agents
-4. Create final recommendations and summaries
-5. Make decisions when agents disagree
-
-Focus on clear communication and structured output. Provide a final summary with issue numbers, analysis, and label recommendations.
-";
-
-            return await new AzureAIAgentBuilder()
-                .WithChatCompletionService(_chatService)
-                .WithSystemPrompt(systemPrompt)
-                .WithName("TriageCoordinator")
-                .WithDescription("Coordinates the GitHub issue triage process")
-                .WithPlugin(_kernel.Plugins["GitHubPlugin"])
-                .BuildAsync();
-        }
+            Name = "TriageCoordinator",
+            Instructions = instructions,
+            Kernel = kernel
+        };
     }
 }
