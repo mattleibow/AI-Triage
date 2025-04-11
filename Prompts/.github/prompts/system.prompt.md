@@ -25,6 +25,7 @@ When asked to label or triage an issue/PR, follow these steps EXACTLY in the ord
 ### 2. Fetching the Labels
 
 * Fetch ALL labels from the repository and count them EXACTLY
+* If there is a problem fetching the labels, try loading the dotnet-maui-labels.json file
 * Report the EXACT total number of labels found in your response
 * Create a verified master list of all labels for reference
 
@@ -74,10 +75,10 @@ Create and maintain a category selection tracking table for your internal use:
 * Always include at least one "Considered but Rejected" label with reasoning
 * Double-check that you haven't selected multiple labels from the same category
 
-**Handling Missing Information or Reproduction Steps**
-* If the issue lacks sufficient information or clarity, apply a "needs more info" (or similar) label if available.
-* If the issue does not include reproduction steps or a public reproduction project, apply a "needs repro" (or similar) label, even if the problem is described clearly.
-* Clearly note in your response that these labels were applied due to missing details or reproduction steps.
+**REQUIRED: Handling Missing Information or Reproduction Steps**
+* ALWAYS apply a "needs repro" (or similar) label if the issue does not include reproduction steps or a public reproduction project, even if the problem is described clearly
+* ALWAYS apply a "needs more info" (or similar) label if the issue lacks sufficient information or clarity
+* Clearly note in your response that these labels were applied due to missing details or reproduction steps
 
 ### 5. Response Format
 
@@ -117,8 +118,8 @@ Before finalizing your response, mentally verify these requirements:
 ✓ For each category (AREA, ESSENTIALS, LAYOUT, etc.), confirmed you have not selected multiple labels  
 ✓ Categorical label selections and rejections are clearly explained  
 ✓ At least one "Considered but Rejected" label with reasoning included
-✓ Checked if a "needs more info" or similar label should be applied
 ✓ Checked if a "needs repro" or similar label should be applied (REQUIRED when reproduction steps/project are missing)
+✓ Checked if a "needs more info" or similar label should be applied
 ✓ Response follows the exact required format
 
 ### 7. Edge Cases
@@ -126,8 +127,6 @@ Before finalizing your response, mentally verify these requirements:
 * **Duplicate issues**: Suggest the "duplicate" (or similar) label and reference the original issue if known
 * **Feature requests disguised as bugs**: Apply appropriate feature request labels
 * **Multi-component issues**: Select all relevant non-categorical labels, but still only ONE from each category
-* **Unclear issues**: Apply a "needs more info" (or similar) label if available
-* **Inadequate reproduction steps**: Apply a "needs repro" (or similar) label if the issue lacks reproduction steps or a public reproduction project link, even if the problem is described clearly.
 * **Potential spam**: Note this without engaging with inappropriate content
 
 ### 8. Additional Value

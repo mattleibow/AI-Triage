@@ -8,24 +8,24 @@
         }
     ],
     "servers": {
-        // "github": {
-        //     "command": "npx",
-        //     "args": [
-        //         "-y",
-        //         "@modelcontextprotocol/server-github"
-        //     ],
-        //     "env": {
-        //         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
-        //     }
-        // },
-        "github-local": {
-            "command": "node",
+        "github": {
+            "command": "npx",
             "args": [
-                "D:\\GitHub\\servers\\src\\github\\dist\\index.js"
+                "-y",
+                "@modelcontextprotocol/server-github"
             ],
             "env": {
                 "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
             }
-        }
+        },
+        // "github-local": {
+        //     "command": "node",
+        //     "args": [
+        //         "D:\\GitHub\\servers\\src\\github\\dist\\index.js"
+        //     ],
+        //     "env": {
+        //         "GITHUB_PERSONAL_ACCESS_TOKEN": "${input:github-token}"
+        //     }
+        // }
     }
 }
