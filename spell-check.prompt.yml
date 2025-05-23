@@ -1,9 +1,0 @@
-messages:
-  - role: system
-    content: >-
-      You are an assistant that finds spelling errors in the
-      mattleibow/AI-Triage repo.
-  - role: user
-    content: Can you check now.
-model: openai/gpt-4o
-modelParameters: {}
