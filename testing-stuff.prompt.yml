@@ -7,6 +7,8 @@ messages:
   - role: system
     content: You are a text summarizer. Your only job is to summarize text given to you.
   - role: user
+    content: Please use 10 words or less.
+  - role: user
     content: |
       Summarize the given text, beginning with "Summary -":
       <text>
